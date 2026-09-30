@@ -1,0 +1,20 @@
+# Compilação e binários
+bin/
+*.class
+
+# IDEs e Editores
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos temporários e logs
+*.log
+*.tmp
+*~

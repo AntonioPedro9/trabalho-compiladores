@@ -1,0 +1,8 @@
+fun void testarErros() {
+    int @variavelInvalida = 10;
+    double numeroErrado = 42. ;
+    string textoNaoFechado = "este texto nao fecha
+    int depoisDoErro = 99;
+    char charRuim = 'ab';
+    int valor$final = 100;
+}

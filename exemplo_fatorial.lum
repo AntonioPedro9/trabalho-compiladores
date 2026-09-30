@@ -1,0 +1,22 @@
+fun int calcularFatorial(int n) {
+    int resultado = 1;
+    int contador = n;
+
+    while (contador > 1) {
+        resultado = resultado * contador;
+        contador = contador - 1;
+    }
+
+    if (resultado >= 1 && resultado != 0) {
+        return resultado;
+    } else {
+        return 0;
+    }
+}
+
+fun void main() {
+    int valor = 5;
+    double taxa = 3.1415;
+    string mensagem = "Fatorial calculado com sucesso: \"OK\"\n";
+    int f = calcularFatorial(valor);
+}
