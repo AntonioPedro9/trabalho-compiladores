@@ -1,0 +1,4 @@
+fun void rotinaComErroDelimitador() {
+    int valorInicial = 100
+    int proximoValor = 200;
+}

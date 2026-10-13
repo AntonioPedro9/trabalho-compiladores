@@ -1,0 +1,14 @@
+fun void testarControles(int limite, bool condicao) {
+    int i = 0;
+    while (i < limite && condicao || !condicao) {
+        if (i == 5) {
+            i = i + 2;
+        } else {
+            i = i + 1;
+        }
+    }
+
+    if (i >= 10 && i != 20) {
+        i = 0;
+    }
+}

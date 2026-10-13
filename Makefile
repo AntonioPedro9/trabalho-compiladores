@@ -2,7 +2,7 @@ JAVAC ?= javac --release 21
 JAVA ?= java
 BIN = bin
 SRCS = $(shell find src test -name "*.java")
-FILE ?= exemplo_fatorial.lum
+FILE ?= exemplos/exemplo_fatorial.lum
 FORMATTER_JAR = .tools/google-java-format.jar
 
 .PHONY: all build test run format clean
@@ -17,12 +17,12 @@ build:
 
 test: build
 	@echo "Iniciando testes..."
-	@$(JAVA) -cp $(BIN) lumina.lexer.TestRunner
+	@$(JAVA) -cp $(BIN) lumina.TestRunner
 	@echo "Testes concluídos com sucesso!"
 
 run: build
 	@echo "Iniciando execução..."
-	@$(JAVA) -cp $(BIN) lumina.lexer.Main $(FILE) || true
+	@$(JAVA) -cp $(BIN) lumina.Main $(FILE) || true
 	@echo "Execução concluída com sucesso!"
 
 format:

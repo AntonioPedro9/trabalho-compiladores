@@ -1,0 +1,17 @@
+fun int somar(int a, int b) {
+    return a + b;
+}
+
+fun double calcularMedia(double x, double y) {
+    return (x + y) / 2.0;
+}
+
+fun void imprimirStatus(string status) {
+    return;
+}
+
+fun void principal() {
+    int resultado = somar(10, 20);
+    double media = calcularMedia(7.5, 8.5);
+    imprimirStatus("Concluido com sucesso");
+}

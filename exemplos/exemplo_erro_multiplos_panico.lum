@@ -1,0 +1,10 @@
+fun void rotinaComMultiplosErros() {
+    int a = 10 + ;
+    int valido1 = 100;
+    if x > 0 {
+        valido1 = 200;
+    }
+    int valido2 = 300;
+    b = ;
+    int finalizado = 400;
+}

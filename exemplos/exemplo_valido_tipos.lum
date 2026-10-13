@@ -1,0 +1,15 @@
+int globalContador = 0;
+double pi = 3.14159;
+bool ativo = true;
+char inicial = 'L';
+string mensagem = "Lumina Lang";
+int semInicializacao;
+
+fun void inicializarVariaveis() {
+    int localA = 10;
+    double localB = 20.5;
+    bool localC = false;
+    char localD = 'X';
+    string localE = "teste";
+    localA = localA + 5 * 2;
+}

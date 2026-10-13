@@ -1,0 +1,5 @@
+fun void rotinaComAtribuicaoInvalida() {
+    int x = 10;
+    x = ;
+    int y = 50;
+}
