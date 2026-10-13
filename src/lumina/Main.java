@@ -10,22 +10,18 @@ import lumina.lexer.Scanner;
 import lumina.lexer.error.LexicalErrorReporter;
 import lumina.lexer.token.Token;
 import lumina.lexer.token.TokenType;
+import lumina.parser.ParseResult;
+import lumina.parser.Parser;
+import lumina.parser.error.SyntaxErrorReporter;
 
 /**
- * Ponto de entrada CLI principal da linguagem Lumina. Recebe o caminho de um arquivo-fonte .lum,
- * realiza a varredura léxica e imprime a tabela de tokens e o relatório de erros com formatação
- * clara e alinhada.
+ * Ponto de entrada do compilador Lumina. Executa a análise léxica e a análise sintática de um
+ * arquivo-fonte.
  */
 public final class Main {
 
-  /** Construtor privado para evitar instanciação da classe utilitária. */
   private Main() {}
 
-  /**
-   * Ponto de entrada da aplicação via linha de comando.
-   *
-   * @param args argumentos de linha de comando contendo o caminho do arquivo-fonte
-   */
   public static void main(String[] args) {
     if (args.length == 0) {
       printUsage();
@@ -42,25 +38,32 @@ public final class Main {
 
     try {
       String source = Files.readString(path, StandardCharsets.UTF_8);
-      tokenizeAndPrint(source, filePathString);
+      compileAndReport(source, filePathString);
     } catch (IOException e) {
       System.err.printf("Erro de leitura no arquivo '%s': %s%n", filePathString, e.getMessage());
       System.exit(1);
     }
   }
 
-  /**
-   * Executa a análise léxica do código-fonte e imprime a tabela de tokens e diagnósticos.
-   *
-   * @param source conteúdo textual do código-fonte
-   * @param fileName nome ou caminho do arquivo analisado
-   */
-  public static void tokenizeAndPrint(String source, String fileName) {
+  public static void compileAndReport(String source, String fileName) {
+    printBanner("COMPILADOR LUMINA: " + fileName);
+
+    boolean lexicalOk = runLexicalAnalysis(source);
+    boolean syntaxOk = runSyntaxAnalysis(source);
+
+    printCompilationSummary(lexicalOk, syntaxOk);
+
+    if (!lexicalOk || !syntaxOk) {
+      System.exit(1);
+    }
+  }
+
+  public static boolean runLexicalAnalysis(String source) {
     System.out.println(
-        "================================================================================");
-    System.out.printf("  ANALISADOR LÉXICO LUMINA — ARQUIVO: %s%n", fileName);
+        "\n--------------------------------------------------------------------------------");
+    System.out.println("  FASE 1: ANÁLISE LÉXICA");
     System.out.println(
-        "================================================================================");
+        "--------------------------------------------------------------------------------");
 
     LexicalErrorReporter errorReporter = new LexicalErrorReporter();
     Scanner scanner = new Scanner(source, errorReporter);
@@ -84,21 +87,64 @@ public final class Main {
     System.out.printf("Total de Tokens Identificados: %d%n", tokens.size());
 
     if (errorReporter.hasErrors()) {
-      System.out.println("\n[!] FORAM DETECTADOS ERROS LÉXICOS:");
+      System.err.println("\n[!] FORAM DETECTADOS ERROS LÉXICOS:");
       errorReporter.printReport(System.err);
-      System.exit(1);
+      return false;
+    }
+
+    System.out.println("[✓] Análise léxica concluída sem erros.");
+    return true;
+  }
+
+  public static boolean runSyntaxAnalysis(String source) {
+    System.out.println(
+        "\n--------------------------------------------------------------------------------");
+    System.out.println("  FASE 2: ANÁLISE SINTÁTICA");
+    System.out.println(
+        "--------------------------------------------------------------------------------");
+
+    SyntaxErrorReporter errorReporter = new SyntaxErrorReporter();
+    Parser parser = new Parser(new Scanner(source), errorReporter);
+    ParseResult result = parser.parse();
+
+    if (result.hasErrors()) {
+      System.err.println("\n[!] FORAM DETECTADOS ERROS SINTÁTICOS:");
+      errorReporter.printReport(System.err);
+      return false;
+    }
+
+    System.out.println("[✓] Análise sintática concluída com sucesso.");
+    return true;
+  }
+
+  private static void printCompilationSummary(boolean lexicalOk, boolean syntaxOk) {
+    System.out.println(
+        "\n================================================================================");
+    System.out.println(
+        "                         RESUMO DA COMPILAÇÃO                                   ");
+    System.out.println(
+        "================================================================================");
+    System.out.printf(
+        "  Status da Análise Léxica   : %s%n", lexicalOk ? "[✓] APROVADO" : "[X] REJEITADO");
+    System.out.printf(
+        "  Status da Análise Sintática: %s%n", syntaxOk ? "[✓] APROVADO" : "[X] REJEITADO");
+    System.out.println(
+        "================================================================================");
+    if (lexicalOk && syntaxOk) {
+      System.out.println(">>> PROGRAMA COMPILADO COM SUCESSO! <<<");
     } else {
-      System.out.println(
-          "[✓] Varredura léxica concluída com 100% de sucesso. Nenhum erro detectado.");
+      System.err.println(">>> PROGRAMA COM ERROS. REVISE OS PROBLEMAS ACIMA. <<<");
     }
   }
 
-  /**
-   * Retorna a descrição amigável da categoria léxica de um tipo de token.
-   *
-   * @param type tipo do token a ser categorizado
-   * @return descrição textual da categoria do token
-   */
+  private static void printBanner(String title) {
+    System.out.println(
+        "================================================================================");
+    System.out.printf("  %s%n", title);
+    System.out.println(
+        "================================================================================");
+  }
+
   private static String getCategoryDescription(TokenType type) {
     if (type.isKeyword()) return "Palavra Reservada";
     if (type.isLiteral()) return "Literal";
@@ -109,12 +155,6 @@ public final class Main {
     return "Identificador";
   }
 
-  /**
-   * Escapa caracteres de controle para exibição formatada.
-   *
-   * @param text texto a ser escapado
-   * @return texto com caracteres de escape formatados
-   */
   private static String escapeString(String text) {
     return text.replace("\\", "\\\\")
         .replace("\n", "\\n")
@@ -123,13 +163,11 @@ public final class Main {
         .replace("\"", "\\\"");
   }
 
-  /** Imprime as instruções de uso e exemplos de execução na saída padrão. */
   private static void printUsage() {
     System.out.println("Uso:");
     System.out.println("  java lumina.Main <caminho-do-arquivo.lum>");
-    System.out.println("  java lumina.lexer.Main <caminho-do-arquivo.lum>");
     System.out.println("\nExemplos:");
-    System.out.println("  make run FILE=exemplo_fatorial.lum");
-    System.out.println("  make run FILE=exemplo_com_erros.lum");
+    System.out.println("  make run FILE=exemplos/exemplo_fatorial.lum");
+    System.out.println("  make run FILE=exemplos/exemplo_com_erros.lum");
   }
 }
