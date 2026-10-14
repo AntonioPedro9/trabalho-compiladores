@@ -3,7 +3,7 @@ package lumina.parser;
 import java.util.Set;
 import lumina.lexer.token.TokenType;
 
-/** Conjuntos FOLLOW e de sincronização dos não-terminais da gramática LL(1). */
+/** Conjuntos FOLLOW formais dos 44 não-terminais da gramática LL(1) da linguagem Lumina. */
 public final class FollowSets {
 
   private FollowSets() {}
@@ -45,8 +45,7 @@ public final class FollowSets {
 
   public static final Set<TokenType> TYPE = Set.of(TokenType.IDENTIFIER);
 
-  public static final Set<TokenType> PARAM_LIST_OPT =
-      Set.of(TokenType.RIGHT_PAREN, TokenType.LEFT_BRACE);
+  public static final Set<TokenType> PARAM_LIST_OPT = Set.of(TokenType.RIGHT_PAREN);
 
   public static final Set<TokenType> PARAM_LIST = Set.of(TokenType.RIGHT_PAREN);
 
@@ -83,8 +82,7 @@ public final class FollowSets {
           TokenType.IF,
           TokenType.WHILE,
           TokenType.RETURN,
-          TokenType.RIGHT_BRACE,
-          TokenType.EOF);
+          TokenType.RIGHT_BRACE);
 
   public static final Set<TokenType> ASSIGN_OR_CALL_STMT = STMT;
 
@@ -120,6 +118,20 @@ public final class FollowSets {
 
   public static final Set<TokenType> EQUALITY_TAIL = EQUALITY;
 
+  public static final Set<TokenType> EQ_OP =
+      Set.of(
+          TokenType.IDENTIFIER,
+          TokenType.INT_LITERAL,
+          TokenType.DOUBLE_LITERAL,
+          TokenType.STRING_LITERAL,
+          TokenType.CHAR_LITERAL,
+          TokenType.TRUE,
+          TokenType.FALSE,
+          TokenType.LEFT_PAREN,
+          TokenType.BANG,
+          TokenType.MINUS,
+          TokenType.PLUS);
+
   public static final Set<TokenType> RELATIONAL =
       Set.of(
           TokenType.SEMICOLON,
@@ -131,6 +143,8 @@ public final class FollowSets {
           TokenType.BANG_EQUAL);
 
   public static final Set<TokenType> RELATIONAL_TAIL = RELATIONAL;
+
+  public static final Set<TokenType> REL_OP = EQ_OP;
 
   public static final Set<TokenType> ADDITIVE =
       Set.of(
@@ -147,6 +161,8 @@ public final class FollowSets {
           TokenType.GREATER_EQUAL);
 
   public static final Set<TokenType> ADDITIVE_TAIL = ADDITIVE;
+
+  public static final Set<TokenType> ADD_OP = EQ_OP;
 
   public static final Set<TokenType> MULTIPLICATIVE =
       Set.of(
@@ -165,6 +181,8 @@ public final class FollowSets {
           TokenType.MINUS);
 
   public static final Set<TokenType> MULTIPLICATIVE_TAIL = MULTIPLICATIVE;
+
+  public static final Set<TokenType> MUL_OP = EQ_OP;
 
   public static final Set<TokenType> UNARY =
       Set.of(

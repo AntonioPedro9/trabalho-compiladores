@@ -44,14 +44,11 @@ public final class Parser {
 
   // DeclList ::= Decl DeclList | vazio
   public void parseDeclList() {
-    if (lookahead.is(TokenType.EOF)) {
-      return;
-    }
     if (isDeclarationStart(lookahead.getType())) {
       parseDecl();
       parseDeclList();
     } else if (isInFollow(FollowSets.DECL_LIST)) {
-      // vazio
+      // vazio (lookahead em FOLLOW(DeclList) = { EOF })
     } else {
       reportError("Declaração inválida no escopo global: token '" + lookahead.getLexeme() + "'.");
       advance();
@@ -136,8 +133,8 @@ public final class Parser {
   public void parseParamListOpt() {
     if (isTypeStart(lookahead.getType())) {
       parseParamList();
-    } else if (isInFollow(FollowSets.PARAM_LIST_OPT)) {
-      // vazio
+    } else if (isInFollow(FollowSets.PARAM_LIST_OPT) || lookahead.is(TokenType.LEFT_BRACE)) {
+      // vazio (aceita FOLLOW(ParamListOpt) = { ')' } ou âncora '{' quando '()' foi omitido)
     } else {
       reportUnexpectedAndSync("tipo do parâmetro ou ')'", FollowSets.PARAM_LIST_OPT);
     }
@@ -178,13 +175,15 @@ public final class Parser {
 
   // StmtList ::= Stmt StmtList | vazio
   public void parseStmtList() {
-    if (lookahead.is(TokenType.EOF) || isInFollow(FollowSets.STMT_LIST)) {
-      return;
-    }
     if (isStatementStart(lookahead.getType())) {
       parseStmt();
       parseStmtList();
+    } else if (isInFollow(FollowSets.STMT_LIST)) {
+      // vazio (lookahead em FOLLOW(StmtList) = { '}' })
     } else {
+      if (lookahead.is(TokenType.EOF)) {
+        return;
+      }
       reportError("Comando inválido ou token inesperado '" + lookahead.getLexeme() + "'.");
       advance();
       synchronizeToNextStatementOrBlockEnd();
@@ -294,7 +293,7 @@ public final class Parser {
       match(TokenType.PIPE_PIPE);
       parseLogicalAnd();
       parseExprTail();
-    } else if (isExpressionTailEnd(FollowSets.EXPR_TAIL)) {
+    } else if (isInFollow(FollowSets.EXPR_TAIL) || isExpressionAnchor(lookahead.getType())) {
       // vazio
     } else {
       reportUnexpectedAndSync("operador '||' ou delimitador", FollowSets.EXPR_TAIL);
@@ -313,7 +312,7 @@ public final class Parser {
       match(TokenType.AMPERSAND_AMPERSAND);
       parseEquality();
       parseLogicalAndTail();
-    } else if (isExpressionTailEnd(FollowSets.LOGICAL_AND_TAIL)) {
+    } else if (isInFollow(FollowSets.LOGICAL_AND_TAIL) || isExpressionAnchor(lookahead.getType())) {
       // vazio
     } else {
       reportUnexpectedAndSync("operador '&&' ou delimitador", FollowSets.LOGICAL_AND_TAIL);
@@ -332,7 +331,7 @@ public final class Parser {
       parseEqOp();
       parseRelational();
       parseEqualityTail();
-    } else if (isExpressionTailEnd(FollowSets.EQUALITY_TAIL)) {
+    } else if (isInFollow(FollowSets.EQUALITY_TAIL) || isExpressionAnchor(lookahead.getType())) {
       // vazio
     } else {
       reportUnexpectedAndSync("operador de igualdade ou delimitador", FollowSets.EQUALITY_TAIL);
@@ -346,7 +345,7 @@ public final class Parser {
     } else if (lookahead.is(TokenType.BANG_EQUAL)) {
       match(TokenType.BANG_EQUAL);
     } else {
-      reportUnexpectedAndSync("operador de igualdade ('==' ou '!=')", FollowSets.RELATIONAL);
+      reportUnexpectedAndSync("operador de igualdade ('==' ou '!=')", FollowSets.EQ_OP);
     }
   }
 
@@ -362,7 +361,7 @@ public final class Parser {
       parseRelOp();
       parseAdditive();
       parseRelationalTail();
-    } else if (isExpressionTailEnd(FollowSets.RELATIONAL_TAIL)) {
+    } else if (isInFollow(FollowSets.RELATIONAL_TAIL) || isExpressionAnchor(lookahead.getType())) {
       // vazio
     } else {
       reportUnexpectedAndSync("operador relacional ou delimitador", FollowSets.RELATIONAL_TAIL);
@@ -380,7 +379,7 @@ public final class Parser {
     } else if (lookahead.is(TokenType.GREATER_EQUAL)) {
       match(TokenType.GREATER_EQUAL);
     } else {
-      reportUnexpectedAndSync("operador relacional ('<', '<=', '>' ou '>=')", FollowSets.ADDITIVE);
+      reportUnexpectedAndSync("operador relacional ('<', '<=', '>' ou '>=')", FollowSets.REL_OP);
     }
   }
 
@@ -396,7 +395,7 @@ public final class Parser {
       parseAddOp();
       parseMultiplicative();
       parseAdditiveTail();
-    } else if (isExpressionTailEnd(FollowSets.ADDITIVE_TAIL)) {
+    } else if (isInFollow(FollowSets.ADDITIVE_TAIL) || isExpressionAnchor(lookahead.getType())) {
       // vazio
     } else {
       reportUnexpectedAndSync("operador aditivo ('+' ou '-')", FollowSets.ADDITIVE_TAIL);
@@ -410,7 +409,7 @@ public final class Parser {
     } else if (lookahead.is(TokenType.MINUS)) {
       match(TokenType.MINUS);
     } else {
-      reportUnexpectedAndSync("operador aditivo ('+' ou '-')", FollowSets.MULTIPLICATIVE);
+      reportUnexpectedAndSync("operador aditivo ('+' ou '-')", FollowSets.ADD_OP);
     }
   }
 
@@ -426,7 +425,8 @@ public final class Parser {
       parseMulOp();
       parseUnary();
       parseMultiplicativeTail();
-    } else if (isExpressionTailEnd(FollowSets.MULTIPLICATIVE_TAIL)) {
+    } else if (isInFollow(FollowSets.MULTIPLICATIVE_TAIL)
+        || isExpressionAnchor(lookahead.getType())) {
       // vazio
     } else {
       reportUnexpectedAndSync(
@@ -443,7 +443,7 @@ public final class Parser {
     } else if (lookahead.is(TokenType.PERCENT)) {
       match(TokenType.PERCENT);
     } else {
-      reportUnexpectedAndSync("operador multiplicativo ('*', '/' ou '%')", FollowSets.UNARY);
+      reportUnexpectedAndSync("operador multiplicativo ('*', '/' ou '%')", FollowSets.MUL_OP);
     }
   }
 
@@ -498,7 +498,7 @@ public final class Parser {
       match(TokenType.LEFT_PAREN);
       parseArgListOpt();
       match(TokenType.RIGHT_PAREN);
-    } else if (isExpressionTailEnd(FollowSets.PRIMARY_TAIL)) {
+    } else if (isInFollow(FollowSets.PRIMARY_TAIL) || isExpressionAnchor(lookahead.getType())) {
       // vazio
     } else {
       reportUnexpectedAndSync("'(' ou delimitador após identificador", FollowSets.PRIMARY_TAIL);
@@ -600,10 +600,6 @@ public final class Parser {
   // Métodos auxiliares de verificação
   private boolean isInFollow(Set<TokenType> followSet) {
     return followSet.contains(lookahead.getType());
-  }
-
-  private boolean isExpressionTailEnd(Set<TokenType> followSet) {
-    return followSet.contains(lookahead.getType()) || isExpressionAnchor(lookahead.getType());
   }
 
   private boolean isDeclarationStart(TokenType type) {
