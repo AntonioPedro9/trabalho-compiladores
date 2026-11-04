@@ -13,10 +13,12 @@ import lumina.lexer.token.TokenType;
 import lumina.parser.ParseResult;
 import lumina.parser.Parser;
 import lumina.parser.error.SyntaxErrorReporter;
+import lumina.visitor.AstPrinterVisitor;
+import lumina.visitor.SourceReprinterVisitor;
 
 /**
- * Ponto de entrada do compilador Lumina. Executa a análise léxica e a análise sintática de um
- * arquivo-fonte.
+ * Ponto de entrada do compilador Lumina. Executa a análise léxica, a análise sintática e a
+ * construção/impressão da Árvore de Sintaxe Abstrata (AST).
  */
 public final class Main {
 
@@ -49,7 +51,7 @@ public final class Main {
     printBanner("COMPILADOR LUMINA: " + fileName);
 
     boolean lexicalOk = runLexicalAnalysis(source);
-    boolean syntaxOk = runSyntaxAnalysis(source);
+    boolean syntaxOk = runSyntaxAndAstAnalysis(source);
 
     printCompilationSummary(lexicalOk, syntaxOk);
 
@@ -96,10 +98,10 @@ public final class Main {
     return true;
   }
 
-  public static boolean runSyntaxAnalysis(String source) {
+  public static boolean runSyntaxAndAstAnalysis(String source) {
     System.out.println(
         "\n--------------------------------------------------------------------------------");
-    System.out.println("  FASE 2: ANÁLISE SINTÁTICA");
+    System.out.println("  FASE 2: ANÁLISE SINTÁTICA E CONSTRUÇÃO DA AST");
     System.out.println(
         "--------------------------------------------------------------------------------");
 
@@ -107,13 +109,20 @@ public final class Main {
     Parser parser = new Parser(new Scanner(source), errorReporter);
     ParseResult result = parser.parse();
 
-    if (result.hasErrors()) {
-      System.err.println("\n[!] FORAM DETECTADOS ERROS SINTÁTICOS:");
+    if (result.hasErrors() || !result.hasAst()) {
+      System.err.println("\n[!] FORAM DETECTADOS ERROS SINTÁTICOS (AST inválida/descartada):");
       errorReporter.printReport(System.err);
       return false;
     }
 
-    System.out.println("[✓] Análise sintática concluída com sucesso.");
+    System.out.println("[✓] Análise sintática concluída com sucesso.\n");
+    System.out.println("--- ÁRVORE DE SINTAXE ABSTRATA (AstPrinterVisitor) ---");
+    AstPrinterVisitor printer = new AstPrinterVisitor();
+    System.out.print(printer.print(result.ast()));
+
+    System.out.println("\n--- CÓDIGO REIMPRESSO CANÔNICO (SourceReprinterVisitor) ---");
+    SourceReprinterVisitor reprinter = new SourceReprinterVisitor();
+    System.out.print(reprinter.reprint(result.ast()));
     return true;
   }
 

@@ -1,0 +1,46 @@
+Program
+  FunctionDecl(int calcularFatorial)
+    Param(int n)
+    Block
+      VarDecl(int resultado)
+        IntLit(1)
+      VarDecl(int contador)
+        Id(n)
+      While
+        Bin(>)
+          Id(contador)
+          IntLit(1)
+        Block
+          Assign(resultado)
+            Bin(*)
+              Id(resultado)
+              Id(contador)
+          Assign(contador)
+            Bin(-)
+              Id(contador)
+              IntLit(1)
+      If
+        Bin(&&)
+          Bin(>=)
+            Id(resultado)
+            IntLit(1)
+          Bin(!=)
+            Id(resultado)
+            IntLit(0)
+        Block
+          Return
+            Id(resultado)
+        Block
+          Return
+            IntLit(0)
+  FunctionDecl(void main)
+    Block
+      VarDecl(int valor)
+        IntLit(5)
+      VarDecl(double taxa)
+        DoubleLit(3.1415)
+      VarDecl(string mensagem)
+        StringLit("Fatorial calculado com sucesso: \"OK\"\n")
+      VarDecl(int f)
+        CallExpr(calcularFatorial)
+          Id(valor)

@@ -1,13 +1,43 @@
 package lumina.parser;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import lumina.ast.AssignNode;
+import lumina.ast.BinNode;
+import lumina.ast.BlockNode;
+import lumina.ast.BoolLitNode;
+import lumina.ast.CallExprNode;
+import lumina.ast.CallStmtNode;
+import lumina.ast.CharLitNode;
+import lumina.ast.DeclNode;
+import lumina.ast.DoubleLitNode;
+import lumina.ast.ExprNode;
+import lumina.ast.FunctionDeclNode;
+import lumina.ast.IdNode;
+import lumina.ast.IfNode;
+import lumina.ast.IntLitNode;
+import lumina.ast.ParamNode;
+import lumina.ast.ProgramNode;
+import lumina.ast.ReturnNode;
+import lumina.ast.StmtNode;
+import lumina.ast.StringLitNode;
+import lumina.ast.TypeNode;
+import lumina.ast.UnaryNode;
+import lumina.ast.VarDeclNode;
+import lumina.ast.WhileNode;
+import lumina.common.source.SourcePosition;
 import lumina.lexer.Scanner;
 import lumina.lexer.token.Token;
 import lumina.lexer.token.TokenType;
 import lumina.parser.error.SyntaxErrorReporter;
 
-/** Analisador sintático descendente recursivo para a linguagem Lumina (LL(1)). */
+/**
+ * Analisador sintático descendente recursivo LL(1) da linguagem Lumina. Constrói a Árvore de
+ * Sintaxe Abstrata (AST) durante a descida recursiva, preservando as decisões por FIRST/FOLLOW e a
+ * recuperação de erros em modo pânico do Checkpoint 2.
+ */
 public final class Parser {
 
   private final Scanner scanner;
@@ -31,22 +61,31 @@ public final class Parser {
   }
 
   public ParseResult parse() {
-    parseProgram();
-    return new ParseResult(!errorReporter.hasErrors(), errorReporter.getErrors());
+    ProgramNode root = parseProgram();
+    if (errorReporter.hasErrors()) {
+      return ParseResult.rejected(errorReporter.getErrors());
+    }
+    return ParseResult.accepted(root);
   }
 
   // Declarações globais
   // Program ::= DeclList EOF
-  public void parseProgram() {
-    parseDeclList();
+  public ProgramNode parseProgram() {
+    SourcePosition startPos = lookahead.getPosition();
+    List<DeclNode> declarations = new ArrayList<>();
+    parseDeclList(declarations);
     match(TokenType.EOF);
+    return new ProgramNode(startPos, declarations);
   }
 
   // DeclList ::= Decl DeclList | vazio
-  public void parseDeclList() {
+  public void parseDeclList(List<DeclNode> declarations) {
     if (isDeclarationStart(lookahead.getType())) {
-      parseDecl();
-      parseDeclList();
+      DeclNode decl = parseDecl();
+      if (decl != null) {
+        declarations.add(decl);
+      }
+      parseDeclList(declarations);
     } else if (isInFollow(FollowSets.DECL_LIST)) {
       // vazio (lookahead em FOLLOW(DeclList) = { EOF })
     } else {
@@ -54,104 +93,129 @@ public final class Parser {
       advance();
       synchronizeToNextDeclaration();
       if (!lookahead.is(TokenType.EOF)) {
-        parseDeclList();
+        parseDeclList(declarations);
       }
     }
   }
 
   // Decl ::= VarDecl | FunctionDecl
-  public void parseDecl() {
+  public DeclNode parseDecl() {
     if (lookahead.is(TokenType.FUN)) {
-      parseFunctionDecl();
+      return parseFunctionDecl();
     } else if (isTypeStart(lookahead.getType())) {
-      parseVarDecl();
+      return parseVarDecl();
     } else {
       reportUnexpectedAndSync("declaração de função ('fun') ou variável (tipo)", FollowSets.DECL);
+      return null;
     }
   }
 
   // VarDecl ::= Type IDENTIFIER VarInitOpt ";"
-  public void parseVarDecl() {
-    parseType();
-    match(TokenType.IDENTIFIER);
-    parseVarInitOpt();
+  public VarDeclNode parseVarDecl() {
+    SourcePosition startPos = lookahead.getPosition();
+    TypeNode type = parseType();
+    Token idToken = match(TokenType.IDENTIFIER);
+    ExprNode init = parseVarInitOpt();
     match(TokenType.SEMICOLON);
+    return new VarDeclNode(startPos, type, idToken.getLexeme(), init);
   }
 
   // VarInitOpt ::= "=" Expr | vazio
-  public void parseVarInitOpt() {
+  public ExprNode parseVarInitOpt() {
     if (lookahead.is(TokenType.EQUAL)) {
       match(TokenType.EQUAL);
-      parseExpr();
+      return parseExpr();
     } else if (isInFollow(FollowSets.VAR_INIT_OPT)) {
-      // vazio
+      return null;
     } else {
       reportUnexpectedAndSync("'=' ou ';' na declaração de variável", FollowSets.VAR_INIT_OPT);
+      return null;
     }
   }
 
   // FunctionDecl ::= "fun" ReturnType IDENTIFIER "(" ParamListOpt ")" Block
-  public void parseFunctionDecl() {
-    match(TokenType.FUN);
-    parseReturnType();
-    match(TokenType.IDENTIFIER);
+  public FunctionDeclNode parseFunctionDecl() {
+    Token funToken = match(TokenType.FUN);
+    TypeNode returnType = parseReturnType();
+    Token nameToken = match(TokenType.IDENTIFIER);
     match(TokenType.LEFT_PAREN);
-    parseParamListOpt();
+    List<ParamNode> params = parseParamListOpt();
     match(TokenType.RIGHT_PAREN);
-    parseBlock();
+    BlockNode body = parseBlock();
+    return new FunctionDeclNode(
+        funToken.getPosition(), returnType, nameToken.getLexeme(), params, body);
   }
 
   // ReturnType ::= Type | "void"
-  public void parseReturnType() {
+  public TypeNode parseReturnType() {
     if (lookahead.is(TokenType.VOID)) {
-      match(TokenType.VOID);
+      Token voidToken = match(TokenType.VOID);
+      return new TypeNode(voidToken.getPosition(), TokenType.VOID);
     } else if (isTypeStart(lookahead.getType())) {
-      parseType();
+      return parseType();
     } else {
+      SourcePosition errPos = lookahead.getPosition();
       reportUnexpectedAndSync("tipo de retorno ou 'void'", FollowSets.RETURN_TYPE);
+      return new TypeNode(errPos, TokenType.VOID);
     }
   }
 
   // Type ::= "int" | "double" | "bool" | "char" | "string"
-  public void parseType() {
+  public TypeNode parseType() {
+    SourcePosition pos = lookahead.getPosition();
     if (lookahead.is(TokenType.INT)) {
       match(TokenType.INT);
+      return new TypeNode(pos, TokenType.INT);
     } else if (lookahead.is(TokenType.DOUBLE)) {
       match(TokenType.DOUBLE);
+      return new TypeNode(pos, TokenType.DOUBLE);
     } else if (lookahead.is(TokenType.BOOL)) {
       match(TokenType.BOOL);
+      return new TypeNode(pos, TokenType.BOOL);
     } else if (lookahead.is(TokenType.CHAR)) {
       match(TokenType.CHAR);
+      return new TypeNode(pos, TokenType.CHAR);
     } else if (lookahead.is(TokenType.STRING)) {
       match(TokenType.STRING);
+      return new TypeNode(pos, TokenType.STRING);
     } else {
       reportUnexpectedAndSync("tipo primitivo (int, double, bool, char, string)", FollowSets.TYPE);
+      return new TypeNode(pos, TokenType.INT);
     }
   }
 
   // ParamListOpt ::= ParamList | vazio
-  public void parseParamListOpt() {
+  public List<ParamNode> parseParamListOpt() {
     if (isTypeStart(lookahead.getType())) {
-      parseParamList();
+      return parseParamList();
     } else if (isInFollow(FollowSets.PARAM_LIST_OPT) || lookahead.is(TokenType.LEFT_BRACE)) {
-      // vazio (aceita FOLLOW(ParamListOpt) = { ')' } ou âncora '{' quando '()' foi omitido)
+      return List.of();
     } else {
       reportUnexpectedAndSync("tipo do parâmetro ou ')'", FollowSets.PARAM_LIST_OPT);
+      return List.of();
     }
   }
 
   // ParamList ::= Param ParamListTail
-  public void parseParamList() {
-    parseParam();
-    parseParamListTail();
+  public List<ParamNode> parseParamList() {
+    List<ParamNode> params = new ArrayList<>();
+    ParamNode first = parseParam();
+    if (first != null) {
+      params.add(first);
+    }
+    parseParamListTail(params);
+    return params;
   }
 
   // ParamListTail ::= "," Param ParamListTail | vazio
-  public void parseParamListTail() {
+  public void parseParamListTail(List<ParamNode> params) {
     if (lookahead.is(TokenType.COMMA)) {
       match(TokenType.COMMA);
-      parseParam();
-      parseParamListTail();
+      ParamNode next = parseParam();
+      if (next != null) {
+        params.add(next);
+      }
+      parseParamListTail(params);
     } else if (isInFollow(FollowSets.PARAM_LIST_TAIL)) {
       // vazio
     } else {
@@ -160,24 +224,31 @@ public final class Parser {
   }
 
   // Param ::= Type IDENTIFIER
-  public void parseParam() {
-    parseType();
-    match(TokenType.IDENTIFIER);
+  public ParamNode parseParam() {
+    SourcePosition startPos = lookahead.getPosition();
+    TypeNode type = parseType();
+    Token nameToken = match(TokenType.IDENTIFIER);
+    return new ParamNode(startPos, type, nameToken.getLexeme());
   }
 
   // Comandos e blocos
   // Block ::= "{" StmtList "}"
-  public void parseBlock() {
-    match(TokenType.LEFT_BRACE);
-    parseStmtList();
+  public BlockNode parseBlock() {
+    Token openBrace = match(TokenType.LEFT_BRACE);
+    List<StmtNode> statements = new ArrayList<>();
+    parseStmtList(statements);
     match(TokenType.RIGHT_BRACE);
+    return new BlockNode(openBrace.getPosition(), statements);
   }
 
   // StmtList ::= Stmt StmtList | vazio
-  public void parseStmtList() {
+  public void parseStmtList(List<StmtNode> statements) {
     if (isStatementStart(lookahead.getType())) {
-      parseStmt();
-      parseStmtList();
+      StmtNode stmt = parseStmt();
+      if (stmt != null) {
+        statements.add(stmt);
+      }
+      parseStmtList(statements);
     } else if (isInFollow(FollowSets.STMT_LIST)) {
       // vazio (lookahead em FOLLOW(StmtList) = { '}' })
     } else {
@@ -188,346 +259,404 @@ public final class Parser {
       advance();
       synchronizeToNextStatementOrBlockEnd();
       if (!lookahead.is(TokenType.EOF)) {
-        parseStmtList();
+        parseStmtList(statements);
       }
     }
   }
 
   // Stmt ::= VarDecl | AssignOrCallStmt | IfStmt | WhileStmt | ReturnStmt
-  public void parseStmt() {
+  public StmtNode parseStmt() {
     if (isTypeStart(lookahead.getType())) {
-      parseVarDecl();
+      return parseVarDecl();
     } else if (lookahead.is(TokenType.IDENTIFIER)) {
-      parseAssignOrCallStmt();
+      return parseAssignOrCallStmt();
     } else if (lookahead.is(TokenType.IF)) {
-      parseIfStmt();
+      return parseIfStmt();
     } else if (lookahead.is(TokenType.WHILE)) {
-      parseWhileStmt();
+      return parseWhileStmt();
     } else if (lookahead.is(TokenType.RETURN)) {
-      parseReturnStmt();
+      return parseReturnStmt();
     } else {
       reportUnexpectedAndSync("início de comando válido", FollowSets.STMT);
+      return null;
     }
   }
 
   // AssignOrCallStmt ::= IDENTIFIER AssignOrCallTail ";"
-  public void parseAssignOrCallStmt() {
-    match(TokenType.IDENTIFIER);
-    parseAssignOrCallTail();
+  public StmtNode parseAssignOrCallStmt() {
+    Token idToken = match(TokenType.IDENTIFIER);
+    StmtNode stmt = parseAssignOrCallTail(idToken);
     match(TokenType.SEMICOLON);
+    return stmt;
   }
 
   // AssignOrCallTail ::= "=" Expr | "(" ArgListOpt ")"
-  public void parseAssignOrCallTail() {
+  public StmtNode parseAssignOrCallTail(Token idToken) {
     if (lookahead.is(TokenType.EQUAL)) {
       match(TokenType.EQUAL);
-      parseExpr();
+      ExprNode value = parseExpr();
+      return new AssignNode(idToken.getPosition(), idToken.getLexeme(), value);
     } else if (lookahead.is(TokenType.LEFT_PAREN)) {
       match(TokenType.LEFT_PAREN);
-      parseArgListOpt();
+      List<ExprNode> args = parseArgListOpt();
       match(TokenType.RIGHT_PAREN);
+      return new CallStmtNode(idToken.getPosition(), idToken.getLexeme(), args);
     } else {
       reportUnexpectedAndSync("'=' ou '(' após identificador", FollowSets.ASSIGN_OR_CALL_TAIL);
+      return new AssignNode(
+          idToken.getPosition(), idToken.getLexeme(), new IdNode(idToken.getPosition(), "<erro>"));
     }
   }
 
   // IfStmt ::= "if" "(" Expr ")" Block ElseOpt
-  public void parseIfStmt() {
-    match(TokenType.IF);
+  public IfNode parseIfStmt() {
+    Token ifToken = match(TokenType.IF);
     match(TokenType.LEFT_PAREN);
-    parseExpr();
+    ExprNode condition = parseExpr();
     match(TokenType.RIGHT_PAREN);
-    parseBlock();
-    parseElseOpt();
+    BlockNode thenBranch = parseBlock();
+    BlockNode elseBranch = parseElseOpt();
+    return new IfNode(ifToken.getPosition(), condition, thenBranch, elseBranch);
   }
 
   // ElseOpt ::= "else" Block | vazio
-  public void parseElseOpt() {
+  public BlockNode parseElseOpt() {
     if (lookahead.is(TokenType.ELSE)) {
       match(TokenType.ELSE);
-      parseBlock();
+      return parseBlock();
     } else if (isInFollow(FollowSets.ELSE_OPT)) {
-      // vazio
+      return null;
     } else {
       reportUnexpectedAndSync("ramo 'else' ou próximo comando", FollowSets.ELSE_OPT);
+      return null;
     }
   }
 
   // WhileStmt ::= "while" "(" Expr ")" Block
-  public void parseWhileStmt() {
-    match(TokenType.WHILE);
+  public WhileNode parseWhileStmt() {
+    Token whileToken = match(TokenType.WHILE);
     match(TokenType.LEFT_PAREN);
-    parseExpr();
+    ExprNode condition = parseExpr();
     match(TokenType.RIGHT_PAREN);
-    parseBlock();
+    BlockNode body = parseBlock();
+    return new WhileNode(whileToken.getPosition(), condition, body);
   }
 
   // ReturnStmt ::= "return" ExprOpt ";"
-  public void parseReturnStmt() {
-    match(TokenType.RETURN);
-    parseExprOpt();
+  public ReturnNode parseReturnStmt() {
+    Token returnToken = match(TokenType.RETURN);
+    ExprNode expr = parseExprOpt();
     match(TokenType.SEMICOLON);
+    return new ReturnNode(returnToken.getPosition(), expr);
   }
 
   // ExprOpt ::= Expr | vazio
-  public void parseExprOpt() {
+  public ExprNode parseExprOpt() {
     if (isExpressionStart(lookahead.getType())) {
-      parseExpr();
+      return parseExpr();
     } else if (isInFollow(FollowSets.EXPR_OPT)) {
-      // vazio
+      return null;
     } else {
       reportUnexpectedAndSync("expressão de retorno ou ';'", FollowSets.EXPR_OPT);
+      return null;
     }
   }
 
-  // Expressões
+  // Expressões (com passagem do operando esquerdo herdado para associatividade à esquerda)
   // Expr ::= LogicalAnd ExprTail
-  public void parseExpr() {
-    parseLogicalAnd();
-    parseExprTail();
+  public ExprNode parseExpr() {
+    ExprNode left = parseLogicalAnd();
+    return parseExprTail(left);
   }
 
   // ExprTail ::= "||" LogicalAnd ExprTail | vazio
-  public void parseExprTail() {
+  public ExprNode parseExprTail(ExprNode left) {
     if (lookahead.is(TokenType.PIPE_PIPE)) {
-      match(TokenType.PIPE_PIPE);
-      parseLogicalAnd();
-      parseExprTail();
+      Token op = match(TokenType.PIPE_PIPE);
+      ExprNode right = parseLogicalAnd();
+      ExprNode combined = new BinNode(left.getPosition(), op.getType(), left, right);
+      return parseExprTail(combined);
     } else if (isInFollow(FollowSets.EXPR_TAIL) || isExpressionAnchor(lookahead.getType())) {
-      // vazio
+      return left;
     } else {
       reportUnexpectedAndSync("operador '||' ou delimitador", FollowSets.EXPR_TAIL);
+      return left;
     }
   }
 
   // LogicalAnd ::= Equality LogicalAndTail
-  public void parseLogicalAnd() {
-    parseEquality();
-    parseLogicalAndTail();
+  public ExprNode parseLogicalAnd() {
+    ExprNode left = parseEquality();
+    return parseLogicalAndTail(left);
   }
 
   // LogicalAndTail ::= "&&" Equality LogicalAndTail | vazio
-  public void parseLogicalAndTail() {
+  public ExprNode parseLogicalAndTail(ExprNode left) {
     if (lookahead.is(TokenType.AMPERSAND_AMPERSAND)) {
-      match(TokenType.AMPERSAND_AMPERSAND);
-      parseEquality();
-      parseLogicalAndTail();
+      Token op = match(TokenType.AMPERSAND_AMPERSAND);
+      ExprNode right = parseEquality();
+      ExprNode combined = new BinNode(left.getPosition(), op.getType(), left, right);
+      return parseLogicalAndTail(combined);
     } else if (isInFollow(FollowSets.LOGICAL_AND_TAIL) || isExpressionAnchor(lookahead.getType())) {
-      // vazio
+      return left;
     } else {
       reportUnexpectedAndSync("operador '&&' ou delimitador", FollowSets.LOGICAL_AND_TAIL);
+      return left;
     }
   }
 
   // Equality ::= Relational EqualityTail
-  public void parseEquality() {
-    parseRelational();
-    parseEqualityTail();
+  public ExprNode parseEquality() {
+    ExprNode left = parseRelational();
+    return parseEqualityTail(left);
   }
 
   // EqualityTail ::= EqOp Relational EqualityTail | vazio
-  public void parseEqualityTail() {
+  public ExprNode parseEqualityTail(ExprNode left) {
     if (isEqualityOperator(lookahead.getType())) {
-      parseEqOp();
-      parseRelational();
-      parseEqualityTail();
+      TokenType op = parseEqOp();
+      ExprNode right = parseRelational();
+      ExprNode combined = new BinNode(left.getPosition(), op, left, right);
+      return parseEqualityTail(combined);
     } else if (isInFollow(FollowSets.EQUALITY_TAIL) || isExpressionAnchor(lookahead.getType())) {
-      // vazio
+      return left;
     } else {
       reportUnexpectedAndSync("operador de igualdade ou delimitador", FollowSets.EQUALITY_TAIL);
+      return left;
     }
   }
 
   // EqOp ::= "==" | "!="
-  public void parseEqOp() {
+  public TokenType parseEqOp() {
     if (lookahead.is(TokenType.EQUAL_EQUAL)) {
-      match(TokenType.EQUAL_EQUAL);
+      return match(TokenType.EQUAL_EQUAL).getType();
     } else if (lookahead.is(TokenType.BANG_EQUAL)) {
-      match(TokenType.BANG_EQUAL);
+      return match(TokenType.BANG_EQUAL).getType();
     } else {
       reportUnexpectedAndSync("operador de igualdade ('==' ou '!=')", FollowSets.EQ_OP);
+      return TokenType.EQUAL_EQUAL;
     }
   }
 
   // Relational ::= Additive RelationalTail
-  public void parseRelational() {
-    parseAdditive();
-    parseRelationalTail();
+  public ExprNode parseRelational() {
+    ExprNode left = parseAdditive();
+    return parseRelationalTail(left);
   }
 
   // RelationalTail ::= RelOp Additive RelationalTail | vazio
-  public void parseRelationalTail() {
+  public ExprNode parseRelationalTail(ExprNode left) {
     if (isRelationalOperator(lookahead.getType())) {
-      parseRelOp();
-      parseAdditive();
-      parseRelationalTail();
+      TokenType op = parseRelOp();
+      ExprNode right = parseAdditive();
+      ExprNode combined = new BinNode(left.getPosition(), op, left, right);
+      return parseRelationalTail(combined);
     } else if (isInFollow(FollowSets.RELATIONAL_TAIL) || isExpressionAnchor(lookahead.getType())) {
-      // vazio
+      return left;
     } else {
       reportUnexpectedAndSync("operador relacional ou delimitador", FollowSets.RELATIONAL_TAIL);
+      return left;
     }
   }
 
   // RelOp ::= "<" | "<=" | ">" | ">="
-  public void parseRelOp() {
+  public TokenType parseRelOp() {
     if (lookahead.is(TokenType.LESS)) {
-      match(TokenType.LESS);
+      return match(TokenType.LESS).getType();
     } else if (lookahead.is(TokenType.LESS_EQUAL)) {
-      match(TokenType.LESS_EQUAL);
+      return match(TokenType.LESS_EQUAL).getType();
     } else if (lookahead.is(TokenType.GREATER)) {
-      match(TokenType.GREATER);
+      return match(TokenType.GREATER).getType();
     } else if (lookahead.is(TokenType.GREATER_EQUAL)) {
-      match(TokenType.GREATER_EQUAL);
+      return match(TokenType.GREATER_EQUAL).getType();
     } else {
       reportUnexpectedAndSync("operador relacional ('<', '<=', '>' ou '>=')", FollowSets.REL_OP);
+      return TokenType.LESS;
     }
   }
 
   // Additive ::= Multiplicative AdditiveTail
-  public void parseAdditive() {
-    parseMultiplicative();
-    parseAdditiveTail();
+  public ExprNode parseAdditive() {
+    ExprNode left = parseMultiplicative();
+    return parseAdditiveTail(left);
   }
 
   // AdditiveTail ::= AddOp Multiplicative AdditiveTail | vazio
-  public void parseAdditiveTail() {
+  public ExprNode parseAdditiveTail(ExprNode left) {
     if (isAdditiveOperator(lookahead.getType())) {
-      parseAddOp();
-      parseMultiplicative();
-      parseAdditiveTail();
+      TokenType op = parseAddOp();
+      ExprNode right = parseMultiplicative();
+      ExprNode combined = new BinNode(left.getPosition(), op, left, right);
+      return parseAdditiveTail(combined);
     } else if (isInFollow(FollowSets.ADDITIVE_TAIL) || isExpressionAnchor(lookahead.getType())) {
-      // vazio
+      return left;
     } else {
       reportUnexpectedAndSync("operador aditivo ('+' ou '-')", FollowSets.ADDITIVE_TAIL);
+      return left;
     }
   }
 
   // AddOp ::= "+" | "-"
-  public void parseAddOp() {
+  public TokenType parseAddOp() {
     if (lookahead.is(TokenType.PLUS)) {
-      match(TokenType.PLUS);
+      return match(TokenType.PLUS).getType();
     } else if (lookahead.is(TokenType.MINUS)) {
-      match(TokenType.MINUS);
+      return match(TokenType.MINUS).getType();
     } else {
       reportUnexpectedAndSync("operador aditivo ('+' ou '-')", FollowSets.ADD_OP);
+      return TokenType.PLUS;
     }
   }
 
   // Multiplicative ::= Unary MultiplicativeTail
-  public void parseMultiplicative() {
-    parseUnary();
-    parseMultiplicativeTail();
+  public ExprNode parseMultiplicative() {
+    ExprNode left = parseUnary();
+    return parseMultiplicativeTail(left);
   }
 
   // MultiplicativeTail ::= MulOp Unary MultiplicativeTail | vazio
-  public void parseMultiplicativeTail() {
+  public ExprNode parseMultiplicativeTail(ExprNode left) {
     if (isMultiplicativeOperator(lookahead.getType())) {
-      parseMulOp();
-      parseUnary();
-      parseMultiplicativeTail();
+      TokenType op = parseMulOp();
+      ExprNode right = parseUnary();
+      ExprNode combined = new BinNode(left.getPosition(), op, left, right);
+      return parseMultiplicativeTail(combined);
     } else if (isInFollow(FollowSets.MULTIPLICATIVE_TAIL)
         || isExpressionAnchor(lookahead.getType())) {
-      // vazio
+      return left;
     } else {
       reportUnexpectedAndSync(
           "operador multiplicativo ('*', '/' ou '%')", FollowSets.MULTIPLICATIVE_TAIL);
+      return left;
     }
   }
 
   // MulOp ::= "*" | "/" | "%"
-  public void parseMulOp() {
+  public TokenType parseMulOp() {
     if (lookahead.is(TokenType.STAR)) {
-      match(TokenType.STAR);
+      return match(TokenType.STAR).getType();
     } else if (lookahead.is(TokenType.SLASH)) {
-      match(TokenType.SLASH);
+      return match(TokenType.SLASH).getType();
     } else if (lookahead.is(TokenType.PERCENT)) {
-      match(TokenType.PERCENT);
+      return match(TokenType.PERCENT).getType();
     } else {
       reportUnexpectedAndSync("operador multiplicativo ('*', '/' ou '%')", FollowSets.MUL_OP);
+      return TokenType.STAR;
     }
   }
 
   // Unary ::= "!" Unary | "-" Unary | "+" Unary | Primary
-  public void parseUnary() {
+  public ExprNode parseUnary() {
     if (lookahead.is(TokenType.BANG)) {
-      match(TokenType.BANG);
-      parseUnary();
+      Token op = match(TokenType.BANG);
+      ExprNode operand = parseUnary();
+      return new UnaryNode(op.getPosition(), TokenType.BANG, operand);
     } else if (lookahead.is(TokenType.MINUS)) {
-      match(TokenType.MINUS);
-      parseUnary();
+      Token op = match(TokenType.MINUS);
+      ExprNode operand = parseUnary();
+      return new UnaryNode(op.getPosition(), TokenType.MINUS, operand);
     } else if (lookahead.is(TokenType.PLUS)) {
-      match(TokenType.PLUS);
-      parseUnary();
+      Token op = match(TokenType.PLUS);
+      ExprNode operand = parseUnary();
+      return new UnaryNode(op.getPosition(), TokenType.PLUS, operand);
     } else if (isPrimaryStart(lookahead.getType())) {
-      parsePrimary();
+      return parsePrimary();
     } else {
+      SourcePosition errPos = lookahead.getPosition();
       reportUnexpectedAndSync("operando ou operador unário ('!', '-' ou '+')", FollowSets.UNARY);
+      return new IdNode(errPos, "<erro>");
     }
   }
 
   // Primary ::= IDENTIFIER PrimaryTail | INT_LITERAL | DOUBLE_LITERAL | STRING_LITERAL |
   // CHAR_LITERAL | "true" | "false" | "(" Expr ")"
-  public void parsePrimary() {
+  public ExprNode parsePrimary() {
     if (lookahead.is(TokenType.IDENTIFIER)) {
-      match(TokenType.IDENTIFIER);
-      parsePrimaryTail();
+      Token idToken = match(TokenType.IDENTIFIER);
+      return parsePrimaryTail(idToken);
     } else if (lookahead.is(TokenType.INT_LITERAL)) {
-      match(TokenType.INT_LITERAL);
+      Token tok = match(TokenType.INT_LITERAL);
+      int val = 0;
+      try {
+        val = Integer.parseInt(tok.getLexeme());
+      } catch (NumberFormatException ignored) {
+        // preservado pelo lexema bruto
+      }
+      return new IntLitNode(tok.getPosition(), val, tok.getLexeme());
     } else if (lookahead.is(TokenType.DOUBLE_LITERAL)) {
-      match(TokenType.DOUBLE_LITERAL);
+      Token tok = match(TokenType.DOUBLE_LITERAL);
+      double val = 0.0;
+      try {
+        val = Double.parseDouble(tok.getLexeme());
+      } catch (NumberFormatException ignored) {
+        // preservado pelo lexema bruto
+      }
+      return new DoubleLitNode(tok.getPosition(), val, tok.getLexeme());
     } else if (lookahead.is(TokenType.STRING_LITERAL)) {
-      match(TokenType.STRING_LITERAL);
+      Token tok = match(TokenType.STRING_LITERAL);
+      return new StringLitNode(tok.getPosition(), tok.getLexeme());
     } else if (lookahead.is(TokenType.CHAR_LITERAL)) {
-      match(TokenType.CHAR_LITERAL);
+      Token tok = match(TokenType.CHAR_LITERAL);
+      return new CharLitNode(tok.getPosition(), tok.getLexeme());
     } else if (lookahead.is(TokenType.TRUE)) {
-      match(TokenType.TRUE);
+      Token tok = match(TokenType.TRUE);
+      return new BoolLitNode(tok.getPosition(), true);
     } else if (lookahead.is(TokenType.FALSE)) {
-      match(TokenType.FALSE);
+      Token tok = match(TokenType.FALSE);
+      return new BoolLitNode(tok.getPosition(), false);
     } else if (lookahead.is(TokenType.LEFT_PAREN)) {
       match(TokenType.LEFT_PAREN);
-      parseExpr();
+      ExprNode inner = parseExpr();
       match(TokenType.RIGHT_PAREN);
+      return inner;
     } else {
+      SourcePosition errPos = lookahead.getPosition();
       reportUnexpectedAndSync("literal, identificador ou '('", FollowSets.PRIMARY);
+      return new IdNode(errPos, "<erro>");
     }
   }
 
   // PrimaryTail ::= "(" ArgListOpt ")" | vazio
-  public void parsePrimaryTail() {
+  public ExprNode parsePrimaryTail(Token idToken) {
     if (lookahead.is(TokenType.LEFT_PAREN)) {
       match(TokenType.LEFT_PAREN);
-      parseArgListOpt();
+      List<ExprNode> args = parseArgListOpt();
       match(TokenType.RIGHT_PAREN);
+      return new CallExprNode(idToken.getPosition(), idToken.getLexeme(), args);
     } else if (isInFollow(FollowSets.PRIMARY_TAIL) || isExpressionAnchor(lookahead.getType())) {
-      // vazio
+      return new IdNode(idToken.getPosition(), idToken.getLexeme());
     } else {
       reportUnexpectedAndSync("'(' ou delimitador após identificador", FollowSets.PRIMARY_TAIL);
+      return new IdNode(idToken.getPosition(), idToken.getLexeme());
     }
   }
 
   // ArgListOpt ::= ArgList | vazio
-  public void parseArgListOpt() {
+  public List<ExprNode> parseArgListOpt() {
     if (isExpressionStart(lookahead.getType())) {
-      parseArgList();
+      return parseArgList();
     } else if (isInFollow(FollowSets.ARG_LIST_OPT)) {
-      // vazio
+      return List.of();
     } else {
       reportUnexpectedAndSync("argumento ou ')'", FollowSets.ARG_LIST_OPT);
+      return List.of();
     }
   }
 
   // ArgList ::= Expr ArgListTail
-  public void parseArgList() {
-    parseExpr();
-    parseArgListTail();
+  public List<ExprNode> parseArgList() {
+    List<ExprNode> args = new ArrayList<>();
+    args.add(parseExpr());
+    parseArgListTail(args);
+    return args;
   }
 
   // ArgListTail ::= "," Expr ArgListTail | vazio
-  public void parseArgListTail() {
+  public void parseArgListTail(List<ExprNode> args) {
     if (lookahead.is(TokenType.COMMA)) {
       match(TokenType.COMMA);
-      parseExpr();
-      parseArgListTail();
+      args.add(parseExpr());
+      parseArgListTail(args);
     } else if (isInFollow(FollowSets.ARG_LIST_TAIL)) {
       // vazio
     } else {
@@ -536,15 +665,17 @@ public final class Parser {
   }
 
   // Consumo de tokens e recuperação em modo pânico
-  private void match(TokenType expected) {
+  private Token match(TokenType expected) {
+    Token current = lookahead;
     if (lookahead.is(expected)) {
       advance();
-      return;
+      return current;
     }
     reportError(
         String.format(
             "Esperava '%s' (%s), mas encontrou '%s'.",
             expected.getDescription(), expected.name(), lookahead.getLexeme()));
+    return new Token(expected, expected.getDescription(), current.getPosition());
   }
 
   private void advance() {

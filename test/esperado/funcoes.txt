@@ -1,0 +1,35 @@
+Program
+  FunctionDecl(int somar)
+    Param(int a)
+    Param(int b)
+    Block
+      Return
+        Bin(+)
+          Id(a)
+          Id(b)
+  FunctionDecl(double calcularMedia)
+    Param(double x)
+    Param(double y)
+    Block
+      Return
+        Bin(/)
+          Bin(+)
+            Id(x)
+            Id(y)
+          DoubleLit(2.0)
+  FunctionDecl(void imprimirStatus)
+    Param(string status)
+    Block
+      Return
+  FunctionDecl(void principal)
+    Block
+      VarDecl(int resultado)
+        CallExpr(somar)
+          IntLit(10)
+          IntLit(20)
+      VarDecl(double media)
+        CallExpr(calcularMedia)
+          DoubleLit(7.5)
+          DoubleLit(8.5)
+      CallStmt(imprimirStatus)
+        StringLit("Concluido com sucesso")
