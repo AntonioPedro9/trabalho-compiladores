@@ -1,0 +1,7 @@
+fun void testarEscopoBloco(int n) {
+    if (n > 0) {
+        int interno = 42;
+        n = n + interno;
+    }
+    n = interno;
+}

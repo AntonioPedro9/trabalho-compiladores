@@ -1,0 +1,5 @@
+fun void testarOrdem() {
+    int a = b + 1;
+    int b = 10;
+    int c = c;
+}

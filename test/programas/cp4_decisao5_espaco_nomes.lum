@@ -1,0 +1,10 @@
+int conflito = 1;
+
+fun void conflito() {
+    return;
+}
+
+fun void testarSombreamentoDeFuncao() {
+    int conflito = 2;
+    conflito = conflito + 1;
+}

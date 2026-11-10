@@ -1,0 +1,38 @@
+Program
+  VarDecl(int taxa)
+    IntLit(10)
+  FunctionDecl(int calcular)
+    Param(int base)
+    Block
+      VarDecl(int total)
+        Bin(+)
+          Id(base@3)
+          Id(taxa@1)
+      While
+        Bin(>)
+          Id(base@3)
+          IntLit(0)
+        Block
+          VarDecl(int taxa)
+            IntLit(2)
+          If
+            Bin(>)
+              Id(total@4)
+              IntLit(5)
+            Block
+              VarDecl(int bonus)
+                Bin(+)
+                  Id(taxa@6)
+                  Id(base@3)
+              Assign(total@4)
+                Bin(+)
+                  Id(total@4)
+                  Id(bonus@8)
+          Assign(base@3)
+            Bin(-)
+              Id(base@3)
+              Id(taxa@6)
+      Return
+        Bin(+)
+          Id(total@4)
+          Id(taxa@1)

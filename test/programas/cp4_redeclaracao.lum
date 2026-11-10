@@ -1,0 +1,7 @@
+int a = 1;
+int a = 2;
+
+fun void testar(int x) {
+    int x = 10;
+    int y = a + x;
+}
