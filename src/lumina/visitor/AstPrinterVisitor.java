@@ -114,7 +114,10 @@ public final class AstPrinterVisitor implements Visitor<String> {
   @Override
   public String visitAssign(AssignNode node) {
     StringBuilder sb = new StringBuilder();
-    sb.append(indent()).append("Assign(").append(node.getTargetName()).append(")\n");
+    sb.append(indent())
+        .append("Assign(")
+        .append(formatIdentifierUse(node.getTargetName(), node.getDecl()))
+        .append(")\n");
     sb.append(visitChild(node.getValue()));
     return sb.toString();
   }
@@ -122,7 +125,10 @@ public final class AstPrinterVisitor implements Visitor<String> {
   @Override
   public String visitCallStmt(CallStmtNode node) {
     StringBuilder sb = new StringBuilder();
-    sb.append(indent()).append("CallStmt(").append(node.getCallee()).append(")\n");
+    sb.append(indent())
+        .append("CallStmt(")
+        .append(formatIdentifierUse(node.getCallee(), node.getDecl()))
+        .append(")\n");
     for (ExprNode arg : node.getArguments()) {
       sb.append(visitChild(arg));
     }
@@ -180,7 +186,10 @@ public final class AstPrinterVisitor implements Visitor<String> {
   @Override
   public String visitCallExpr(CallExprNode node) {
     StringBuilder sb = new StringBuilder();
-    sb.append(indent()).append("CallExpr(").append(node.getCallee()).append(")\n");
+    sb.append(indent())
+        .append("CallExpr(")
+        .append(formatIdentifierUse(node.getCallee(), node.getDecl()))
+        .append(")\n");
     for (ExprNode arg : node.getArguments()) {
       sb.append(visitChild(arg));
     }
@@ -189,7 +198,14 @@ public final class AstPrinterVisitor implements Visitor<String> {
 
   @Override
   public String visitId(IdNode node) {
-    return indent() + "Id(" + node.getName() + ")\n";
+    return indent() + "Id(" + formatIdentifierUse(node.getName(), node.getDecl()) + ")\n";
+  }
+
+  private String formatIdentifierUse(String name, lumina.symbols.Symbol decl) {
+    if (decl != null) {
+      return decl.formatReference();
+    }
+    return name;
   }
 
   @Override

@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import lumina.common.source.SourcePosition;
+import lumina.symbols.Symbol;
 import lumina.visitor.Visitor;
 
 /**
@@ -14,6 +15,7 @@ public final class CallStmtNode extends StmtNode {
 
   private final String callee;
   private final List<ExprNode> arguments;
+  public Symbol decl;
 
   public CallStmtNode(SourcePosition position, String callee, List<ExprNode> arguments) {
     super(position);
@@ -28,6 +30,14 @@ public final class CallStmtNode extends StmtNode {
 
   public List<ExprNode> getArguments() {
     return arguments;
+  }
+
+  public Symbol getDecl() {
+    return decl;
+  }
+
+  public void setDecl(Symbol decl) {
+    this.decl = decl;
   }
 
   @Override
