@@ -13,12 +13,15 @@ import lumina.lexer.token.TokenType;
 import lumina.parser.ParseResult;
 import lumina.parser.Parser;
 import lumina.parser.error.SyntaxErrorReporter;
+import lumina.symbols.IdentificationError;
 import lumina.visitor.AstPrinterVisitor;
+import lumina.visitor.IdentificationVisitor;
 import lumina.visitor.SourceReprinterVisitor;
 
 /**
- * Ponto de entrada do compilador Lumina. Executa a análise léxica, a análise sintática e a
- * construção/impressão da Árvore de Sintaxe Abstrata (AST).
+ * Ponto de entrada do compilador Lumina. Executa a análise léxica, a análise sintática, a
+ * construção/impressão da Árvore de Sintaxe Abstrata (AST) e a Passada de Identificação (Tabela de
+ * Símbolos).
  */
 public final class Main {
 
@@ -51,11 +54,17 @@ public final class Main {
     printBanner("COMPILADOR LUMINA: " + fileName);
 
     boolean lexicalOk = runLexicalAnalysis(source);
-    boolean syntaxOk = runSyntaxAndAstAnalysis(source);
+    ParseResult syntaxResult = runSyntaxAndAstAnalysis(source);
+    boolean syntaxOk = syntaxResult.isSuccessful() && syntaxResult.hasAst();
+    boolean identificationOk = false;
 
-    printCompilationSummary(lexicalOk, syntaxOk);
+    if (syntaxOk) {
+      identificationOk = runIdentificationAnalysis(syntaxResult);
+    }
 
-    if (!lexicalOk || !syntaxOk) {
+    printCompilationSummary(lexicalOk, syntaxOk, identificationOk);
+
+    if (!lexicalOk || !syntaxOk || !identificationOk) {
       System.exit(1);
     }
   }
@@ -98,7 +107,7 @@ public final class Main {
     return true;
   }
 
-  public static boolean runSyntaxAndAstAnalysis(String source) {
+  public static ParseResult runSyntaxAndAstAnalysis(String source) {
     System.out.println(
         "\n--------------------------------------------------------------------------------");
     System.out.println("  FASE 2: ANÁLISE SINTÁTICA E CONSTRUÇÃO DA AST");
@@ -112,7 +121,7 @@ public final class Main {
     if (result.hasErrors() || !result.hasAst()) {
       System.err.println("\n[!] FORAM DETECTADOS ERROS SINTÁTICOS (AST inválida/descartada):");
       errorReporter.printReport(System.err);
-      return false;
+      return result;
     }
 
     System.out.println("[✓] Análise sintática concluída com sucesso.\n");
@@ -123,10 +132,37 @@ public final class Main {
     System.out.println("\n--- CÓDIGO REIMPRESSO CANÔNICO (SourceReprinterVisitor) ---");
     SourceReprinterVisitor reprinter = new SourceReprinterVisitor();
     System.out.print(reprinter.reprint(result.ast()));
+    return result;
+  }
+
+  public static boolean runIdentificationAnalysis(ParseResult syntaxResult) {
+    System.out.println(
+        "\n--------------------------------------------------------------------------------");
+    System.out.println("  FASE 3: PASSADA DE IDENTIFICAÇÃO E TABELA DE SÍMBOLOS");
+    System.out.println(
+        "--------------------------------------------------------------------------------");
+
+    IdentificationVisitor identification = new IdentificationVisitor();
+    identification.identify(syntaxResult.ast());
+
+    System.out.println("--- AST DECORADA (AstPrinterVisitor com resolução nome@linha) ---");
+    AstPrinterVisitor printer = new AstPrinterVisitor();
+    System.out.print(printer.print(syntaxResult.ast()));
+
+    if (identification.hasErrors()) {
+      System.err.println("\n[!] FORAM DETECTADOS ERROS DE IDENTIFICAÇÃO:");
+      for (IdentificationError err : identification.getErrors()) {
+        System.err.println("  " + err.getMessage());
+      }
+      return false;
+    }
+
+    System.out.println("\n[✓] Passada de identificação concluída sem erros.");
     return true;
   }
 
-  private static void printCompilationSummary(boolean lexicalOk, boolean syntaxOk) {
+  private static void printCompilationSummary(
+      boolean lexicalOk, boolean syntaxOk, boolean identificationOk) {
     System.out.println(
         "\n================================================================================");
     System.out.println(
@@ -134,12 +170,15 @@ public final class Main {
     System.out.println(
         "================================================================================");
     System.out.printf(
-        "  Status da Análise Léxica   : %s%n", lexicalOk ? "[✓] APROVADO" : "[X] REJEITADO");
+        "  Status da Análise Léxica       : %s%n", lexicalOk ? "[✓] APROVADO" : "[X] REJEITADO");
     System.out.printf(
-        "  Status da Análise Sintática: %s%n", syntaxOk ? "[✓] APROVADO" : "[X] REJEITADO");
+        "  Status da Análise Sintática    : %s%n", syntaxOk ? "[✓] APROVADO" : "[X] REJEITADO");
+    String idStatus =
+        !syntaxOk ? "[-] NÃO EXECUTADA" : (identificationOk ? "[✓] APROVADO" : "[X] REJEITADO");
+    System.out.printf("  Status da Identificação (CP4)  : %s%n", idStatus);
     System.out.println(
         "================================================================================");
-    if (lexicalOk && syntaxOk) {
+    if (lexicalOk && syntaxOk && identificationOk) {
       System.out.println(">>> PROGRAMA COMPILADO COM SUCESSO! <<<");
     } else {
       System.err.println(">>> PROGRAMA COM ERROS. REVISE OS PROBLEMAS ACIMA. <<<");
