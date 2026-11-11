@@ -2,16 +2,17 @@ package lumina.ast;
 
 import java.util.Objects;
 import lumina.common.source.SourcePosition;
+import lumina.symbols.Symbol;
 import lumina.visitor.Visitor;
 
 /**
- * Nó de referência a identificador em expressão (Primary ::= IDENTIFIER). Projetado para apontar
- * para a entrada correspondente da Tabela de Símbolos nas próximas etapas sem mudar a estrutura da
- * árvore.
+ * Nó de referência a identificador em expressão (Primary ::= IDENTIFIER). Decorado na Passada de
+ * Identificação com o ponteiro {@code decl} para a entrada da Tabela de Símbolos.
  */
 public final class IdNode extends ExprNode {
 
   private final String name;
+  public Symbol decl;
 
   public IdNode(SourcePosition position, String name) {
     super(position);
@@ -20,6 +21,14 @@ public final class IdNode extends ExprNode {
 
   public String getName() {
     return name;
+  }
+
+  public Symbol getDecl() {
+    return decl;
+  }
+
+  public void setDecl(Symbol decl) {
+    this.decl = decl;
   }
 
   @Override

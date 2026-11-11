@@ -1,0 +1,17 @@
+Program
+  VarDecl(int a)
+    IntLit(1)
+  VarDecl(int a)
+    IntLit(2)
+  FunctionDecl(void testar)
+    Param(int x)
+    Block
+      VarDecl(int x)
+        IntLit(10)
+      VarDecl(int y)
+        Bin(+)
+          Id(a@1)
+          Id(x@4)
+---
+linha 2: 'a' já declarado neste escopo (linha 1)
+linha 5: 'x' já declarado neste escopo (linha 4)

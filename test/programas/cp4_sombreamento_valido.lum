@@ -1,0 +1,14 @@
+int taxa = 10;
+
+fun int calcular(int base) {
+    int total = base + taxa;
+    while (base > 0) {
+        int taxa = 2;
+        if (total > 5) {
+            int bonus = taxa + base;
+            total = total + bonus;
+        }
+        base = base - taxa;
+    }
+    return total + taxa;
+}

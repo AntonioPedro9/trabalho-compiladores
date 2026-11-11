@@ -1,0 +1,15 @@
+Program
+  VarDecl(int a)
+    IntLit(10)
+  FunctionDecl(void calcular)
+    Block
+      Assign(b)
+        Bin(+)
+          Id(a@1)
+          Id(c)
+      CallStmt(inexistente)
+        Id(a@1)
+---
+linha 4: 'b' não declarado
+linha 4: 'c' não declarado
+linha 5: 'inexistente' não declarado

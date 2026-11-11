@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import lumina.common.source.SourcePosition;
+import lumina.symbols.Symbol;
 import lumina.visitor.Visitor;
 
 /** Nó de chamada de função dentro de uma expressão (Primary ::= IDENTIFIER "(" ArgListOpt ")"). */
@@ -11,6 +12,7 @@ public final class CallExprNode extends ExprNode {
 
   private final String callee;
   private final List<ExprNode> arguments;
+  public Symbol decl;
 
   public CallExprNode(SourcePosition position, String callee, List<ExprNode> arguments) {
     super(position);
@@ -25,6 +27,14 @@ public final class CallExprNode extends ExprNode {
 
   public List<ExprNode> getArguments() {
     return arguments;
+  }
+
+  public Symbol getDecl() {
+    return decl;
+  }
+
+  public void setDecl(Symbol decl) {
+    this.decl = decl;
   }
 
   @Override

@@ -1,0 +1,10 @@
+fun void contagemRegressiva(int n) {
+    if (n > 0) {
+        contagemRegressiva(n - 1);
+    }
+    return;
+}
+
+fun void main() {
+    contagemRegressiva(5);
+}
