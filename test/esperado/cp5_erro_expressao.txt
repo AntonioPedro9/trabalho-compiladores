@@ -1,0 +1,4 @@
+linha 2: operador '%' incompatível com double e int
+linha 3: operador '+' incompatível com int e string
+linha 4: operador '&&' incompatível com bool e int
+linha 5: operador unário '-' incompatível com string

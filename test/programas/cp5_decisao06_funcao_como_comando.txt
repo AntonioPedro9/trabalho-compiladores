@@ -1,0 +1,8 @@
+fun int somar(int a, int b) {
+    return a + b;
+}
+
+fun void main() {
+    somar(10, 20);
+    int aproveitado = somar(1, 2);
+}

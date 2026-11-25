@@ -1,0 +1,8 @@
+fun void limparTela() {
+    return;
+}
+
+fun void main() {
+    int codigo = limparTela();
+    int soma = limparTela() + 10;
+}

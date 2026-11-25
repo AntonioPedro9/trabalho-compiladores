@@ -1,0 +1,11 @@
+fun int calcularCodigo() {
+    return "invalido";
+}
+
+fun double obterMedia() {
+    return;
+}
+
+fun void finalizar() {
+    return 0;
+}

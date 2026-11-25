@@ -1,0 +1,13 @@
+fun int completo(bool c) {
+    if (c) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+fun int incompleto(bool c) {
+    if (c) {
+        return 1;
+    }
+}

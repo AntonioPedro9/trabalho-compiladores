@@ -1,0 +1,6 @@
+fun void testarExpressoes(int a, double d, string s, bool b) {
+    double restoReal = d % 2;
+    int somaTexto = a + s;
+    bool logicoInt = b && a;
+    int negTexto = -s;
+}

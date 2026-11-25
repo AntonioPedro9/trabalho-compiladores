@@ -1,0 +1,3 @@
+linha 13: 'fat' espera 1 argumento(s), recebeu 2
+linha 14: argumento 1 de 'mostra': esperado string, veio int
+linha 14: argumento 2 de 'mostra': esperado int, veio bool

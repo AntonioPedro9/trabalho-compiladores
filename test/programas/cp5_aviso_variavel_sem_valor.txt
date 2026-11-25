@@ -1,0 +1,15 @@
+fun int calcularComAviso(bool flag) {
+    int diretaSemValor;
+    int a = diretaSemValor + 1;
+    int parcial;
+    if (flag) {
+        parcial = 10;
+    }
+    int completa;
+    if (flag) {
+        completa = 5;
+    } else {
+        completa = 8;
+    }
+    return a + parcial + completa;
+}
