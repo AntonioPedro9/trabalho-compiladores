@@ -1,0 +1,6 @@
+fun bool testarString(string a, string b) {
+    bool iguais = a == b || a != "fim";
+    string concatenada = a + b;
+    bool menor = a < b;
+    return iguais;
+}

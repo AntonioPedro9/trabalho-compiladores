@@ -1,0 +1,6 @@
+fun void testarIgualdadeMista(int i, double d, bool b, char c, string s) {
+    bool numericoAceito = i == d && d != i;
+    bool erroIntBool = i == b;
+    bool erroStrInt = s == i;
+    bool erroCharBool = c != b;
+}

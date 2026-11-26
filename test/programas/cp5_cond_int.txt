@@ -1,0 +1,9 @@
+int limite = 10;
+fun void testarCondicao(int n, string texto) {
+    if (n) {
+        n = n - 1;
+    }
+    while (texto) {
+        n = limite;
+    }
+}

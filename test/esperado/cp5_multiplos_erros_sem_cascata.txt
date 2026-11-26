@@ -1,0 +1,5 @@
+linha 2: operador '+' incompatível com int e bool
+linha 3: operador '-' incompatível com string e int
+linha 4: atribuição a 'x': esperado int, veio string
+linha 6: 'processar' espera 2 argumento(s), recebeu 1
+linha 7: operador '*' incompatível com string e int

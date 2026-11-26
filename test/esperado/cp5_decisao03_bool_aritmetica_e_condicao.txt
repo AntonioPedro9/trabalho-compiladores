@@ -1,0 +1,4 @@
+linha 3: operador '+' incompatível com bool e int
+linha 4: operador unário '-' incompatível com bool
+linha 5: operador unário '!' incompatível com int
+linha 6: condição de 'if' deve ser bool, mas é int

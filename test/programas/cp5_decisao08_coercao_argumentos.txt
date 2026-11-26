@@ -1,0 +1,12 @@
+fun double escalar(double valor) {
+    return valor * 2.0;
+}
+
+fun int dobrarInt(int valor) {
+    return valor * 2;
+}
+
+fun void main() {
+    double aceito = escalar(5);
+    int recusado = dobrarInt(2.5);
+}

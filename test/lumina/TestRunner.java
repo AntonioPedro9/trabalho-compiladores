@@ -4,11 +4,13 @@ import lumina.ast.AstTest;
 import lumina.lexer.ScannerTest;
 import lumina.parser.ParserTest;
 import lumina.symbols.SymbolTableTest;
+import lumina.types.OperatorRulesTest;
 import lumina.visitor.IdentificationTest;
+import lumina.visitor.TypeCheckerTest;
 
 /**
- * Executa todos os testes do compilador (Scanner, Parser, AST/Visitors, SymbolTable e Passada de
- * Identificação).
+ * Executa todas as suítes de testes do compilador (Scanner, Parser, AST, Tabela de Símbolos,
+ * Identificação e Verificador de Tipos).
  */
 public final class TestRunner {
 
@@ -18,7 +20,7 @@ public final class TestRunner {
     System.out.println(
         "================================================================================");
     System.out.println(
-        "      SUÍTE DE TESTES (SCANNER, PARSER, AST/VISITOR E IDENTIFICAÇÃO CP4)        ");
+        "   SUÍTE DE TESTES (SCANNER, PARSER, AST, IDENTIFICAÇÃO E VERIFICAÇÃO DE TIPOS) ");
     System.out.println(
         "================================================================================\n");
 
@@ -41,6 +43,14 @@ public final class TestRunner {
     System.out.println("\n>>> TESTES DA PASSADA DE IDENTIFICAÇÃO (CP4)");
     IdentificationTest identificationSuite = new IdentificationTest();
     identificationSuite.runAllTests();
+
+    System.out.println("\n>>> TESTES ISOLADOS DA TABELA DE OPERADORES (CP5)");
+    OperatorRulesTest operatorRulesSuite = new OperatorRulesTest();
+    operatorRulesSuite.runAllTests();
+
+    System.out.println("\n>>> TESTES DO VERIFICADOR DE TIPOS (CP5)");
+    TypeCheckerTest typeCheckerSuite = new TypeCheckerTest();
+    typeCheckerSuite.runAllTests();
 
     System.out.println(
         "\n================================================================================");

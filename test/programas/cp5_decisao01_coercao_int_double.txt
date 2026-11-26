@@ -1,0 +1,13 @@
+fun double elevar(int x) {
+    double base = 2;
+    base = base + x;
+    if (x < base && x == 2.0) {
+        return x;
+    }
+    return base;
+}
+
+fun void testarInversoInvalido(double real) {
+    int truncado = real;
+    truncado = 3.5;
+}

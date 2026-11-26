@@ -34,6 +34,7 @@ import lumina.symbols.ScopedSymbolTable;
 import lumina.symbols.Symbol;
 import lumina.symbols.SymbolCategory;
 import lumina.symbols.SymbolTable;
+import lumina.types.LuminaType;
 
 /**
  * Passada de Identificação (Checkpoint 4 — Parte 3). Percorre a AST via double dispatch ({@code
@@ -120,9 +121,15 @@ public final class IdentificationVisitor implements Visitor<Void> {
   public Void visitFunctionDecl(FunctionDeclNode node) {
     node.getReturnType().accept(this);
     SymbolCategory category = resolveCallableCategory(node.getReturnType());
+    List<LuminaType> parameterTypes = extractParameterTypes(node.getParams());
     Symbol functionSymbol =
         new Symbol(
-            node.getName(), category, node, table.level(), node.getReturnType().getTypeToken());
+            node.getName(),
+            category,
+            node,
+            table.level(),
+            node.getReturnType().getTypeToken(),
+            parameterTypes);
     declareOrReportRedeclaration(functionSymbol, node.getLine());
 
     table.openScope();
@@ -274,6 +281,14 @@ public final class IdentificationVisitor implements Visitor<Void> {
 
   private boolean isVoidReturnType(TypeNode returnType) {
     return returnType.getTypeToken() == TokenType.VOID;
+  }
+
+  private List<LuminaType> extractParameterTypes(List<ParamNode> params) {
+    List<LuminaType> paramTypes = new ArrayList<>(params.size());
+    for (ParamNode param : params) {
+      paramTypes.add(LuminaType.fromTokenType(param.getType().getTypeToken()));
+    }
+    return paramTypes;
   }
 
   private void declareOrReportRedeclaration(Symbol symbol, int declarationLine) {

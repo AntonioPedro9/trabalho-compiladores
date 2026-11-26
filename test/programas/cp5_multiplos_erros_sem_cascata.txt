@@ -1,0 +1,8 @@
+fun int processar(int x, string nome) {
+    int calc = (x + true) * 10 - 5;
+    if ((nome - 1) > 0) {
+        x = "errado";
+    }
+    int r = processar(x);
+    return ("fim" * 2);
+}

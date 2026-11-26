@@ -1,0 +1,2 @@
+linha 3: aviso: variável 'diretaSemValor' (int) pode ser usada sem valor inicial
+linha 14: aviso: variável 'parcial' (int) pode ser usada sem valor inicial

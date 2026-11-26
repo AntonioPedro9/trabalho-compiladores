@@ -1,0 +1,2 @@
+linha 6: procedimento 'limparTela' é void e não pode ser usado em expressão
+linha 7: procedimento 'limparTela' é void e não pode ser usado em expressão

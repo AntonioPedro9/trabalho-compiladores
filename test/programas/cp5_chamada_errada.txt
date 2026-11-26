@@ -1,0 +1,15 @@
+fun int fat(int n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * fat(n - 1);
+}
+
+fun void mostra(string rotulo, int valor) {
+    return;
+}
+
+fun void main() {
+    int r = fat(1, 2);
+    mostra(100, true);
+}

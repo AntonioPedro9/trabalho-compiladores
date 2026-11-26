@@ -24,6 +24,7 @@ import lumina.ast.TypeNode;
 import lumina.ast.UnaryNode;
 import lumina.ast.VarDeclNode;
 import lumina.ast.WhileNode;
+import lumina.symbols.Symbol;
 
 /**
  * Impressora textual da AST (Seção 3.2.1). Produz uma representação determinística da árvore, com
@@ -33,21 +34,23 @@ public final class AstPrinterVisitor implements Visitor<String> {
 
   private static final String INDENT_STEP = "  ";
   private int depth = 0;
+  private boolean showTypes = false;
 
   public String print(Node root) {
     this.depth = 0;
+    this.showTypes = false;
     return root.accept(this);
   }
 
-  private String indent() {
-    return INDENT_STEP.repeat(depth);
-  }
-
-  private String visitChild(Node child) {
-    depth++;
-    String rendered = child.accept(this);
-    depth--;
-    return rendered;
+  /** Imprime a AST incluindo o tipo anotado em cada expressão. */
+  public String printTyped(Node root) {
+    this.depth = 0;
+    this.showTypes = true;
+    try {
+      return root.accept(this);
+    } finally {
+      this.showTypes = false;
+    }
   }
 
   @Override
@@ -169,7 +172,12 @@ public final class AstPrinterVisitor implements Visitor<String> {
   @Override
   public String visitBin(BinNode node) {
     StringBuilder sb = new StringBuilder();
-    sb.append(indent()).append("Bin(").append(node.getOperatorSymbol()).append(")\n");
+    sb.append(indent())
+        .append("Bin(")
+        .append(node.getOperatorSymbol())
+        .append(")")
+        .append(formatTypeSuffix(node))
+        .append("\n");
     sb.append(visitChild(node.getLeft()));
     sb.append(visitChild(node.getRight()));
     return sb.toString();
@@ -178,7 +186,12 @@ public final class AstPrinterVisitor implements Visitor<String> {
   @Override
   public String visitUnary(UnaryNode node) {
     StringBuilder sb = new StringBuilder();
-    sb.append(indent()).append("Unary(").append(node.getOperatorSymbol()).append(")\n");
+    sb.append(indent())
+        .append("Unary(")
+        .append(node.getOperatorSymbol())
+        .append(")")
+        .append(formatTypeSuffix(node))
+        .append("\n");
     sb.append(visitChild(node.getOperand()));
     return sb.toString();
   }
@@ -189,7 +202,9 @@ public final class AstPrinterVisitor implements Visitor<String> {
     sb.append(indent())
         .append("CallExpr(")
         .append(formatIdentifierUse(node.getCallee(), node.getDecl()))
-        .append(")\n");
+        .append(")")
+        .append(formatTypeSuffix(node))
+        .append("\n");
     for (ExprNode arg : node.getArguments()) {
       sb.append(visitChild(arg));
     }
@@ -198,38 +213,65 @@ public final class AstPrinterVisitor implements Visitor<String> {
 
   @Override
   public String visitId(IdNode node) {
-    return indent() + "Id(" + formatIdentifierUse(node.getName(), node.getDecl()) + ")\n";
+    return indent()
+        + "Id("
+        + formatIdentifierUse(node.getName(), node.getDecl())
+        + ")"
+        + formatTypeSuffix(node)
+        + "\n";
   }
 
-  private String formatIdentifierUse(String name, lumina.symbols.Symbol decl) {
+  @Override
+  public String visitIntLit(IntLitNode node) {
+    return indent() + "IntLit(" + node.getRawLexeme() + ")" + formatTypeSuffix(node) + "\n";
+  }
+
+  @Override
+  public String visitDoubleLit(DoubleLitNode node) {
+    return indent() + "DoubleLit(" + node.getRawLexeme() + ")" + formatTypeSuffix(node) + "\n";
+  }
+
+  @Override
+  public String visitStringLit(StringLitNode node) {
+    return indent() + "StringLit(" + node.getRawLexeme() + ")" + formatTypeSuffix(node) + "\n";
+  }
+
+  @Override
+  public String visitCharLit(CharLitNode node) {
+    return indent() + "CharLit(" + node.getRawLexeme() + ")" + formatTypeSuffix(node) + "\n";
+  }
+
+  @Override
+  public String visitBoolLit(BoolLitNode node) {
+    return indent() + "BoolLit(" + node.getValue() + ")" + formatTypeSuffix(node) + "\n";
+  }
+
+  private String indent() {
+    return INDENT_STEP.repeat(depth);
+  }
+
+  private String visitChild(Node child) {
+    depth++;
+    String rendered = child.accept(this);
+    depth--;
+    return rendered;
+  }
+
+  private String formatIdentifierUse(String name, Symbol decl) {
     if (decl != null) {
       return decl.formatReference();
     }
     return name;
   }
 
-  @Override
-  public String visitIntLit(IntLitNode node) {
-    return indent() + "IntLit(" + node.getRawLexeme() + ")\n";
+  private String formatTypeSuffix(ExprNode expr) {
+    if (shouldAppendExpressionType(expr)) {
+      return " : " + expr.getType().getDescription();
+    }
+    return "";
   }
 
-  @Override
-  public String visitDoubleLit(DoubleLitNode node) {
-    return indent() + "DoubleLit(" + node.getRawLexeme() + ")\n";
-  }
-
-  @Override
-  public String visitStringLit(StringLitNode node) {
-    return indent() + "StringLit(" + node.getRawLexeme() + ")\n";
-  }
-
-  @Override
-  public String visitCharLit(CharLitNode node) {
-    return indent() + "CharLit(" + node.getRawLexeme() + ")\n";
-  }
-
-  @Override
-  public String visitBoolLit(BoolLitNode node) {
-    return indent() + "BoolLit(" + node.getValue() + ")\n";
+  private boolean shouldAppendExpressionType(ExprNode expr) {
+    return showTypes && expr.getType() != null;
   }
 }

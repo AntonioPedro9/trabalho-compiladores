@@ -1,14 +1,15 @@
 package lumina.symbols;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import lumina.ast.Node;
 import lumina.lexer.token.TokenType;
+import lumina.types.LuminaType;
 
 /**
- * Representa uma entrada de declaração na Tabela de Símbolos da linguagem Lumina. Guarda o nome, a
- * categoria, o nó de declaração na AST e o nível de escopo, além de reservar os atributos {@code
- * type} (para a checagem de tipos das Aulas 12–15) e {@code offset} (para a geração de código TAM
- * das Aulas 16–19) sem exigir alteração estrutural nas fases seguintes.
+ * Representa uma entrada de declaração na Tabela de Símbolos, armazenando nome, categoria, nó de
+ * origem, nível de escopo, tipo e assinatura de parâmetros.
  */
 public final class Symbol {
 
@@ -16,31 +17,41 @@ public final class Symbol {
   private final SymbolCategory category;
   private final Node declarationNode;
   private final int level;
+  private final List<LuminaType> parameterTypes;
 
-  /**
-   * Campo reservado para o Checkpoint 5 (checagem de tipos: {@code i.decl.type}). Exposto também
-   * via getter/setter.
-   */
+  /** Tipo sintático associado ao símbolo declarado. */
   public TokenType type;
 
-  /** Campo reservado para o Checkpoint 6 (deslocamento no frame da máquina TAM). */
+  /** Deslocamento reservado para alocação no frame da máquina TAM. */
   private int offset;
 
   public Symbol(String name, SymbolCategory category, Node declarationNode, int level) {
-    this(name, category, declarationNode, level, null);
+    this(name, category, declarationNode, level, null, List.of());
   }
 
   public Symbol(
       String name, SymbolCategory category, Node declarationNode, int level, TokenType type) {
+    this(name, category, declarationNode, level, type, List.of());
+  }
+
+  public Symbol(
+      String name,
+      SymbolCategory category,
+      Node declarationNode,
+      int level,
+      TokenType type,
+      List<LuminaType> parameterTypes) {
     this.name = Objects.requireNonNull(name, "O nome do símbolo não pode ser nulo.");
     this.category = Objects.requireNonNull(category, "A categoria do símbolo não pode ser nula.");
     this.declarationNode =
         Objects.requireNonNull(declarationNode, "O nó da declaração não pode ser nulo.");
+    Objects.requireNonNull(parameterTypes, "A lista de tipos de parâmetros não pode ser nula.");
     if (level < 0) {
       throw new IllegalArgumentException("O nível de escopo não pode ser negativo: " + level);
     }
     this.level = level;
     this.type = type;
+    this.parameterTypes = List.copyOf(parameterTypes);
     this.offset = -1;
   }
 
@@ -70,6 +81,26 @@ public final class Symbol {
 
   public void setType(TokenType type) {
     this.type = type;
+  }
+
+  public LuminaType getSemanticType() {
+    return LuminaType.fromTokenType(type);
+  }
+
+  public List<LuminaType> getParameterTypes() {
+    return Collections.unmodifiableList(parameterTypes);
+  }
+
+  public boolean isCallable() {
+    return category == SymbolCategory.FUNCTION || category == SymbolCategory.PROCEDURE;
+  }
+
+  public boolean isProcedure() {
+    return category == SymbolCategory.PROCEDURE;
+  }
+
+  public boolean isAssignableStorage() {
+    return category == SymbolCategory.VARIABLE || category == SymbolCategory.PARAMETER;
   }
 
   public int getOffset() {

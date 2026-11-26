@@ -1,0 +1,7 @@
+fun bool testarChar(char c1, char c2) {
+    bool ordemValida = c1 < c2 && c1 != c2;
+    int somaInvalida = c1 + 1;
+    bool compInvalida = c1 == 65;
+    char atribInvalida = 300;
+    return ordemValida;
+}

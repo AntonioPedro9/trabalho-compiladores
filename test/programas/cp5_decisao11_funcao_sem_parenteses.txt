@@ -1,0 +1,12 @@
+fun int obterTaxa() {
+    return 10;
+}
+
+fun void logar() {
+    return;
+}
+
+fun void main() {
+    int x = obterTaxa + 1;
+    int y = logar;
+}

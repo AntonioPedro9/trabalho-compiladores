@@ -1,0 +1,9 @@
+fun void testarDominioLogico(int n, bool ativo) {
+    bool logicoValido = ativo && !false;
+    int aritInvalida = ativo + n;
+    int unarioInvalido = -ativo;
+    bool negIntInvalida = !n;
+    if (n) {
+        n = 0;
+    }
+}

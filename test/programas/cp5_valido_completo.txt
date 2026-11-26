@@ -1,0 +1,33 @@
+int contadorGlobal = 0;
+double fatorGlobal = 1.5;
+bool sistemaAtivo = true;
+char separador = ':';
+string saudacao = "Lumina";
+
+fun double calcularPontuacao(int pontos, double peso, char categoria) {
+    double acumulado = +pontos * peso - -0.5;
+    int bonusResto = pontos % 3;
+    if (categoria >= 'A' && categoria <= 'Z' || categoria == separador) {
+        acumulado = acumulado + bonusResto + fatorGlobal;
+    } else {
+        acumulado = acumulado - 1;
+    }
+    return acumulado;
+}
+
+fun void atualizarContador(int limite, string etiqueta) {
+    int passo = 0;
+    while (passo < limite && !false && etiqueta != "") {
+        contadorGlobal = contadorGlobal + 1;
+        passo = passo + 1;
+    }
+    return;
+}
+
+fun void main() {
+    if (sistemaAtivo && saudacao == "Lumina") {
+        double nota = calcularPontuacao(10, 2, 'B');
+        calcularPontuacao(4, nota, ':');
+        atualizarContador(3, saudacao);
+    }
+}
